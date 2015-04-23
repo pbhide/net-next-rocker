@@ -50,9 +50,9 @@ static const char rocker_driver_name[] = "rocker";
 /* load time parameters */
 static int port_mode_num = 4;
 static int rocker_port_mode[ROCKER_FP_PORTS_MAX] = {
-  ROCKER_PORT_MODE_OF_DPA, ROCKER_PORT_MODE_OF_DPA,
-  ROCKER_PORT_MODE_P4_L2L3, ROCKER_PORT_MODE_P4_L2L3,
-  0, 
+	ROCKER_PORT_MODE_OF_DPA, ROCKER_PORT_MODE_OF_DPA,
+	ROCKER_PORT_MODE_P4_L2L3, ROCKER_PORT_MODE_P4_L2L3,
+	0,
 };
 
 static const struct pci_device_id rocker_pci_id_table[] = {
@@ -188,46 +188,47 @@ struct rocker_neigh_tbl_entry {
 	bool ttl_check;
 };
 
-static int rocker_port_fdb_learn(struct rocker_world *w, 
-                struct rocker_port *rocker_port,
-				        int flags, const u8 *addr, __be16 vlan_id);
-static int rocker_port_vlan(struct rocker_world *w, 
-                struct rocker_port *rocker_port, int flags,
-			          u16 vid);
+static int rocker_port_fdb_learn(struct rocker_world *w,
+				 struct rocker_port *rocker_port,
+				 int flags, const u8 *addr, __be16 vlan_id);
+
+static int rocker_port_vlan(struct rocker_world *w,
+			    struct rocker_port *rocker_port, int flags,
+			    u16 vid);
 
 static struct rocker_world_ops of_dpa_ops = {
-  .init = NULL, // rocker_of_dpa_init,
-  .uninit = NULL, // rocker_of_dpa_uninit,
-  .fdb_op = rocker_port_fdb_learn,
-  .port_vlan_op = rocker_port_vlan,
+	.init = NULL, /* rocker_of_dpa_init, */
+	.uninit = NULL, /* rocker_of_dpa_uninit, */
+	.fdb_op = rocker_port_fdb_learn,
+	.port_vlan_op = rocker_port_vlan,
 };
 
 static struct rocker_world_ops p4_rmt_ops = {
-  .init = rocker_p4_l2l3_init,
-  .uninit = rocker_p4_l2l3_uninit,
-  .fdb_op = rocker_p4_l2l3_fdb_learn,
-  .port_vlan_op = rocker_p4_l2l3_port_vlan,
+	.init = rocker_p4_l2l3_init,
+	.uninit = rocker_p4_l2l3_uninit,
+	.fdb_op = rocker_p4_l2l3_fdb_learn,
+	.port_vlan_op = rocker_p4_l2l3_port_vlan,
 };
 
-static struct rocker_world * rocker_world_alloc (int id, 
-      struct rocker_world_ops *ops, struct rocker *rocker)
+static struct rocker_world *
+rocker_world_alloc(int id, struct rocker_world_ops *ops, struct rocker *rocker)
 {
-  struct rocker_world *w = kmalloc(sizeof(struct rocker_world), GFP_KERNEL);
-  w->ops = ops;
-  w->priv = NULL;
-  w->rocker = rocker;
-  w->world_id = id;
-  return w;
+	struct rocker_world *w = kmalloc(sizeof(*w), GFP_KERNEL);
+
+	w->ops = ops;
+	w->priv = NULL;
+	w->rocker = rocker;
+	w->world_id = id;
+	return w;
 }
 
 static void rocker_world_free(struct rocker_world *w)
 {
-  if (w == NULL)
-    return;
-  if (w->ops && w->ops->uninit)
-    w->ops->uninit(w);
-  kfree(w);
-  return;
+	if (w == NULL)
+		return;
+	if (w->ops && w->ops->uninit)
+		w->ops->uninit(w);
+	kfree(w);
 }
 
 static const u8 zero_mac[ETH_ALEN]   = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
@@ -240,7 +241,7 @@ static const u8 ipv4_mask[ETH_ALEN]  = { 0xff, 0xff, 0xff, 0x80, 0x00, 0x00 };
 static const u8 ipv6_mcast[ETH_ALEN] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 };
 static const u8 ipv6_mask[ETH_ALEN]  = { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 };
 
-/* Rocker priority levels for flow table entries.  Higher
+/* Rocker priority levels for flow table entries. Higher
  * priority match takes precedence over lower priority match.
  */
 
@@ -271,7 +272,7 @@ static bool rocker_vlan_id_is_internal(__be16 vlan_id)
 }
 
 __be16 rocker_port_vid_to_vlan(struct rocker_port *rocker_port,
-				      u16 vid, bool *pop_vlan)
+			       u16 vid, bool *pop_vlan)
 {
 	__be16 vlan_id;
 
@@ -288,7 +289,7 @@ __be16 rocker_port_vid_to_vlan(struct rocker_port *rocker_port,
 }
 
 u16 rocker_port_vlan_to_vid(struct rocker_port *rocker_port,
-				   __be16 vlan_id)
+			    __be16 vlan_id)
 {
 	if (rocker_vlan_id_is_internal(vlan_id))
 		return 0;
@@ -303,7 +304,7 @@ bool rocker_port_is_bridged(struct rocker_port *rocker_port)
 
 static bool rocker_port_is_p4_l2l3(struct rocker_port *rocker_port)
 {
-  return rocker_port->port_mode == ROCKER_PORT_MODE_P4_L2L3;
+	return rocker_port->port_mode == ROCKER_PORT_MODE_P4_L2L3;
 }
 
 struct rocker_wait {
@@ -565,11 +566,11 @@ free_irq:
 }
 
 /******
- * TLV - 
+ * TLV -
  ******/
 
 struct rocker_tlv *rocker_tlv_next(const struct rocker_tlv *tlv,
-					  int *remaining)
+				   int *remaining)
 {
 	int totlen = ROCKER_TLV_ALIGN(tlv->len);
 
@@ -686,7 +687,7 @@ struct rocker_tlv *rocker_tlv_start(struct rocker_desc_info *desc_info)
 }
 
 int rocker_tlv_put(struct rocker_desc_info *desc_info,
-			  int attrtype, int attrlen, const void *data)
+		   int attrtype, int attrlen, const void *data)
 {
 	int tail_room = desc_info->data_size - desc_info->tlv_size;
 	int total_size = rocker_tlv_total_size(attrlen);
@@ -705,37 +706,37 @@ int rocker_tlv_put(struct rocker_desc_info *desc_info,
 }
 
 int rocker_tlv_put_u8(struct rocker_desc_info *desc_info,
-			     int attrtype, u8 value)
+		      int attrtype, u8 value)
 {
 	return rocker_tlv_put(desc_info, attrtype, sizeof(u8), &value);
 }
 
 int rocker_tlv_put_u16(struct rocker_desc_info *desc_info,
-			      int attrtype, u16 value)
+		       int attrtype, u16 value)
 {
 	return rocker_tlv_put(desc_info, attrtype, sizeof(u16), &value);
 }
 
 int rocker_tlv_put_be16(struct rocker_desc_info *desc_info,
-			       int attrtype, __be16 value)
+			int attrtype, __be16 value)
 {
 	return rocker_tlv_put(desc_info, attrtype, sizeof(__be16), &value);
 }
 
-int rocker_tlv_put_u32(struct rocker_desc_info *desc_info,
-			      int attrtype, u32 value)
+int rocker_tlv_put_u32(struct rocker_desc_info *desc_info, int attrtype,
+		       u32 value)
 {
 	return rocker_tlv_put(desc_info, attrtype, sizeof(u32), &value);
 }
 
 int rocker_tlv_put_be32(struct rocker_desc_info *desc_info,
-			       int attrtype, __be32 value)
+			int attrtype, __be32 value)
 {
 	return rocker_tlv_put(desc_info, attrtype, sizeof(__be32), &value);
 }
 
 int rocker_tlv_put_u64(struct rocker_desc_info *desc_info,
-			      int attrtype, u64 value)
+		       int attrtype, u64 value)
 {
 	return rocker_tlv_put(desc_info, attrtype, sizeof(u64), &value);
 }
@@ -752,13 +753,13 @@ rocker_tlv_nest_start(struct rocker_desc_info *desc_info, int attrtype)
 }
 
 void rocker_tlv_nest_end(struct rocker_desc_info *desc_info,
-				struct rocker_tlv *start)
+			 struct rocker_tlv *start)
 {
 	start->len = (char *) rocker_tlv_start(desc_info) - (char *) start;
 }
 
 void rocker_tlv_nest_cancel(struct rocker_desc_info *desc_info,
-				   struct rocker_tlv *start)
+			    struct rocker_tlv *start)
 {
 	desc_info->tlv_size = (char *) start - desc_info->data;
 }
@@ -1452,10 +1453,9 @@ static irqreturn_t rocker_rx_irq_handler(int irq, void *dev_id)
  ********************/
 
 int rocker_cmd_exec(struct rocker *rocker,
-			   struct rocker_port *rocker_port,
-			   rocker_cmd_cb_t prepare, void *prepare_priv,
-			   rocker_cmd_cb_t process, void *process_priv,
-			   bool nowait)
+		    struct rocker_port *rocker_port, rocker_cmd_cb_t prepare,
+		    void *prepare_priv, rocker_cmd_cb_t process,
+		    void *process_priv, bool nowait)
 {
 	struct rocker_desc_info *desc_info;
 	struct rocker_wait *wait;
@@ -1670,14 +1670,14 @@ rocker_cmd_set_port_settings_ethtool_prep(struct rocker *rocker,
 
 static int
 rocker_cmd_set_port_settings_mode_prep(struct rocker *rocker,
-					  struct rocker_port *rocker_port,
-					  struct rocker_desc_info *desc_info,
-					  void *priv)
+				       struct rocker_port *rocker_port,
+				       struct rocker_desc_info *desc_info,
+				       void *priv)
 {
 	struct rocker_tlv *cmd_info;
 
-  netdev_info(rocker_port->dev, "setting port_mode %d\n", 
-                        rocker_port->port_mode);
+	netdev_info(rocker_port->dev, "setting port_mode %d\n",
+		    rocker_port->port_mode);
 
 	if (rocker_tlv_put_u16(desc_info, ROCKER_TLV_CMD_TYPE,
 			       ROCKER_TLV_CMD_TYPE_SET_PORT_SETTINGS))
@@ -1689,7 +1689,7 @@ rocker_cmd_set_port_settings_mode_prep(struct rocker *rocker,
 			       rocker_port->pport))
 		return -EMSGSIZE;
 	if (rocker_tlv_put_u8(desc_info, ROCKER_TLV_CMD_PORT_SETTINGS_MODE,
-			       (unsigned char)rocker_port->port_mode))
+			      (unsigned char)rocker_port->port_mode))
 		return -EMSGSIZE;
 	rocker_tlv_nest_end(desc_info, cmd_info);
 	return 0;
@@ -2229,8 +2229,8 @@ static int rocker_cmd_group_tbl_del(struct rocker *rocker,
 
 static int rocker_init_tbls(struct rocker *rocker)
 {
-  // XXX some of these are of_dpa specific,
-  // XXX move to world specific init()
+	/* XXX some of these are of_dpa specific, */
+	/* XXX move to world specific init() */
 	hash_init(rocker->flow_tbl);
 	spin_lock_init(&rocker->flow_tbl_lock);
 
@@ -3275,8 +3275,8 @@ static int rocker_port_ctrl(struct rocker_port *rocker_port, int flags,
 	return err;
 }
 
-static int rocker_port_vlan(struct rocker_world *w, 
-          struct rocker_port *rocker_port, int flags,
+static int rocker_port_vlan(struct rocker_world *w,
+			    struct rocker_port *rocker_port, int flags,
 			    u16 vid)
 {
 	enum rocker_of_dpa_table_id goto_tbl =
@@ -3390,36 +3390,38 @@ static void rocker_port_fdb_learn_work(struct work_struct *work)
 
 int
 rocker_send_mac_learn_notification_to_bridge(struct rocker_world *w,
-            struct rocker_port *rocker_port,
-				    int flags, const u8 *addr, __be16 vlan_id)
+					     struct rocker_port *rocker_port,
+					     int flags, const u8 *addr,
+					     __be16 vlan_id)
 {
-	  struct rocker_fdb_learn_work *lw;
-	  bool syncing = !!(rocker_port->brport_flags & BR_LEARNING_SYNC);
-        if (!syncing)
-          return 0;
+	struct rocker_fdb_learn_work *lw;
+	bool syncing = !!(rocker_port->brport_flags & BR_LEARNING_SYNC);
 
-        if (!rocker_port_is_bridged(rocker_port))
-          return 0;
+	if (!syncing)
+		return 0;
 
-        lw = kmalloc(sizeof(*lw), rocker_op_flags_gfp(flags));
-        if (!lw)
-          return -ENOMEM;
+	if (!rocker_port_is_bridged(rocker_port))
+		return 0;
 
-        INIT_WORK(&lw->work, rocker_port_fdb_learn_work);
+	lw = kmalloc(sizeof(*lw), rocker_op_flags_gfp(flags));
+	if (!lw)
+		return -ENOMEM;
 
-        lw->dev = rocker_port->dev;
-        lw->flags = flags;
-        ether_addr_copy(lw->addr, addr);
-        lw->vid = rocker_port_vlan_to_vid(rocker_port, vlan_id);
+	INIT_WORK(&lw->work, rocker_port_fdb_learn_work);
 
-        schedule_work(&lw->work);
+	lw->dev = rocker_port->dev;
+	lw->flags = flags;
+	ether_addr_copy(lw->addr, addr);
+	lw->vid = rocker_port_vlan_to_vid(rocker_port, vlan_id);
 
-        return 0;
+	schedule_work(&lw->work);
+
+	return 0;
 }
 
-static int rocker_port_fdb_learn(struct rocker_world *w, 
-                    struct rocker_port *rocker_port,
-				            int flags, const u8 *addr, __be16 vlan_id)
+static int rocker_port_fdb_learn(struct rocker_world *w,
+				 struct rocker_port *rocker_port,
+				 int flags, const u8 *addr, __be16 vlan_id)
 {
 	enum rocker_of_dpa_table_id goto_tbl =
 		ROCKER_OF_DPA_TABLE_ID_ACL_POLICY;
@@ -3440,8 +3442,8 @@ static int rocker_port_fdb_learn(struct rocker_world *w,
 			return err;
 	}
 
-  rocker_send_mac_learn_notification_to_bridge(w, rocker_port,
-                                          flags, addr, vlan_id);
+	rocker_send_mac_learn_notification_to_bridge(w, rocker_port,
+						     flags, addr, vlan_id);
 	return 0;
 }
 
@@ -3453,7 +3455,6 @@ rocker_fdb_tbl_find(struct rocker *rocker, struct rocker_fdb_tbl_entry *match)
 	hash_for_each_possible(rocker->fdb_tbl, found, entry, match->key_crc32)
 		if (memcmp(&found->key, &match->key, sizeof(found->key)) == 0)
 			return found;
-
 	return NULL;
 }
 
@@ -3499,12 +3500,12 @@ static int rocker_port_fdb(struct rocker_port *rocker_port,
 		flags |= ROCKER_OP_FLAG_REFRESH;
 	}
 
-  netdev_info(rocker_port->dev, "rocker port fdb add on port %d\n", 
-                      rocker_port->pport);
+	netdev_info(rocker_port->dev, "rocker port fdb add on port %d\n",
+		    rocker_port->pport);
 	return ROCKER_PORT_WORLD_OPS(rocker_port)->fdb_op(
-              ROCKER_PORT_WORLD(rocker_port),
-              rocker_port, 
-              flags, addr, vlan_id);
+						ROCKER_PORT_WORLD(rocker_port),
+						rocker_port,
+						flags, addr, vlan_id);
 }
 
 static int rocker_port_fdb_flush(struct rocker_port *rocker_port)
@@ -3528,11 +3529,11 @@ static int rocker_port_fdb_flush(struct rocker_port *rocker_port)
 			continue;
 		if (!found->learned)
 			continue;
-	  err = ROCKER_PORT_WORLD_OPS(rocker_port)->fdb_op(
-                    ROCKER_PORT_WORLD(rocker_port),
-                    rocker_port,
-                    flags, found->key.addr,
-                    found->key.vlan_id);
+		err = ROCKER_PORT_WORLD_OPS(rocker_port)->fdb_op(
+				ROCKER_PORT_WORLD(rocker_port),
+				rocker_port,
+				flags, found->key.addr,
+				found->key.vlan_id);
 		if (err)
 			goto err_out;
 		hash_del(&found->entry);
@@ -3669,14 +3670,15 @@ static int rocker_port_stp_update(struct rocker_port *rocker_port, u8 state)
 
 static int rocker_port_fwd_enable(struct rocker_port *rocker_port)
 {
-	if (rocker_port_is_bridged(rocker_port))
+	if (rocker_port_is_bridged(rocker_port)) {
 		/* bridge STP will enable port */
 		return 0;
+	}
 
-  if (rocker_port_is_p4_l2l3(rocker_port)) {
-    /* STP not supported on P4 yet */
-    return 0;
-  }
+	if (rocker_port_is_p4_l2l3(rocker_port)) {
+		/* STP not supported on P4 yet */
+		return 0;
+	}
 
 	/* port is not bridged, so simulate going to FORWARDING state */
 	return rocker_port_stp_update(rocker_port, BR_STATE_FORWARDING);
@@ -3687,10 +3689,10 @@ static int rocker_port_fwd_disable(struct rocker_port *rocker_port)
 	if (rocker_port_is_bridged(rocker_port))
 		/* bridge STP will disable port */
 		return 0;
-  if (rocker_port_is_p4_l2l3(rocker_port)) {
-    /* STP not supported on P4 yet */
-    return 0;
-  }
+	if (rocker_port_is_p4_l2l3(rocker_port)) {
+		/* STP not supported on P4 yet */
+		return 0;
+	}
 
 	/* port is not bridged, so simulate going to DISABLED state */
 	return rocker_port_stp_update(rocker_port, BR_STATE_DISABLED);
@@ -3835,7 +3837,8 @@ static int rocker_port_open(struct net_device *dev)
 	struct rocker_port *rocker_port = netdev_priv(dev);
 	int err;
 
-  netdev_info(rocker_port->dev, "port_open %d\n", rocker_port->port_number);
+	netdev_info(rocker_port->dev, "port_open %d\n",
+		    rocker_port->port_number);
 	err = rocker_port_dma_rings_init(rocker_port);
 	if (err)
 		return err;
@@ -3856,7 +3859,7 @@ static int rocker_port_open(struct net_device *dev)
 		goto err_request_rx_irq;
 	}
 
-  /* assign port to rocker world based on mode */
+	/* assign port to rocker world based on mode */
 	err = rocker_cmd_set_port_settings_mode(rocker_port);
 	if (err)
 		goto err_fwd_enable;
@@ -3969,7 +3972,8 @@ static netdev_tx_t rocker_port_xmit(struct sk_buff *skb, struct net_device *dev)
 	int i;
 	int err;
 
-  netdev_info(rocker_port->dev, "port_xmit %d\n", rocker_port->port_number);
+	netdev_info(rocker_port->dev, "port_xmit %d\n",
+		    rocker_port->port_number);
 
 	desc_info = rocker_desc_head_get(&rocker_port->tx_ring);
 	if (unlikely(!desc_info)) {
@@ -4027,8 +4031,8 @@ static int rocker_port_set_mac_address(struct net_device *dev, void *p)
 	struct rocker_port *rocker_port = netdev_priv(dev);
 	int err;
 
-  netdev_info(rocker_port->dev, "set_mac_addr on port %d\n", 
-                                        rocker_port->pport);
+	netdev_info(rocker_port->dev, "set_mac_addr on port %d\n",
+		    rocker_port->pport);
 	if (!is_valid_ether_addr(addr->sa_data))
 		return -EADDRNOTAVAIL;
 
@@ -4045,12 +4049,12 @@ static int rocker_port_vlan_rx_add_vid(struct net_device *dev,
 	struct rocker_port *rocker_port = netdev_priv(dev);
 	int err;
 
-  if (rocker_port_is_p4_l2l3(rocker_port)) {
-    /* not supported on P4 yet */
-    return 0;
-  }
+	if (rocker_port_is_p4_l2l3(rocker_port)) {
+		/* not supported on P4 yet */
+		return 0;
+	}
 	err = ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
-              ROCKER_PORT_WORLD(rocker_port), rocker_port, 0, vid);
+			ROCKER_PORT_WORLD(rocker_port), rocker_port, 0, vid);
 	if (err)
 		return err;
 
@@ -4069,9 +4073,9 @@ static int rocker_port_vlan_rx_kill_vid(struct net_device *dev,
 		return err;
 
 	return ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
-                            ROCKER_PORT_WORLD(rocker_port), rocker_port, 
-                            ROCKER_OP_FLAG_REMOVE, 
-                            vid);
+			ROCKER_PORT_WORLD(rocker_port), rocker_port,
+			ROCKER_OP_FLAG_REMOVE,
+			vid);
 }
 
 static int rocker_port_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
@@ -4645,11 +4649,11 @@ static void rocker_port_dev_addr_init(struct rocker *rocker,
 
 static int rocker_port_mode_get(unsigned int port_number)
 {
-    if (port_number >= ROCKER_FP_PORTS_MAX ||
-        port_number > port_mode_num) {
-        return ROCKER_PORT_MODE_OF_DPA;
-    }
-    return rocker_port_mode[port_number];
+	  if (port_number >= ROCKER_FP_PORTS_MAX ||
+	      port_number > port_mode_num) {
+		return ROCKER_PORT_MODE_OF_DPA;
+	  }
+	  return rocker_port_mode[port_number];
 }
 
 static int rocker_probe_port(struct rocker *rocker, unsigned int port_number)
@@ -4668,7 +4672,7 @@ static int rocker_probe_port(struct rocker *rocker, unsigned int port_number)
 	rocker_port->port_number = port_number;
 	rocker_port->pport = port_number + 1;
 	rocker_port->brport_flags = BR_LEARNING | BR_LEARNING_SYNC;
-  rocker_port->port_mode = rocker_port_mode_get(port_number);
+	rocker_port->port_mode = rocker_port_mode_get(port_number);
 
 	rocker_port_dev_addr_init(rocker, rocker_port);
 	dev->netdev_ops = &rocker_port_netdev_ops;
@@ -4776,7 +4780,7 @@ static int rocker_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct rocker *rocker;
 	int err;
-  int i;
+	int i;
 
 	rocker = kzalloc(sizeof(*rocker), GFP_KERNEL);
 	if (!rocker)
@@ -4876,25 +4880,24 @@ static int rocker_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_probe_ports;
 	}
 
-  /* init worlds */
-  for (i=0; i<ROCKER_PORT_MODE_MAX; i++) {
-    rocker->worlds[i] = NULL;
-  }
-  rocker->worlds[ROCKER_PORT_MODE_OF_DPA] = rocker_world_alloc(
-                                                ROCKER_PORT_MODE_OF_DPA,
-                                                &of_dpa_ops, 
-                                                rocker);
-  rocker->worlds[ROCKER_PORT_MODE_P4_L2L3] = rocker_world_alloc(
-                                                ROCKER_PORT_MODE_P4_L2L3, 
-                                                &p4_rmt_ops,
-                                                rocker);
-  for (i=0; i<ROCKER_PORT_MODE_MAX; i++) {
-    if (rocker->worlds[i] && rocker->worlds[i]->ops->init) {
-      dev_info(&pdev->dev, "Rocker switch init world %d\n", i);
-      rocker->worlds[i]->ops->init(rocker->worlds[i]);
-    }
-  }
-
+	/* init worlds */
+	for (i = 0; i < ROCKER_PORT_MODE_MAX; i++) {
+		rocker->worlds[i] = NULL;
+	}
+	rocker->worlds[ROCKER_PORT_MODE_OF_DPA] =
+			rocker_world_alloc(ROCKER_PORT_MODE_OF_DPA,
+					   &of_dpa_ops,
+					   rocker);
+	rocker->worlds[ROCKER_PORT_MODE_P4_L2L3] =
+			rocker_world_alloc(ROCKER_PORT_MODE_P4_L2L3,
+					   &p4_rmt_ops, rocker);
+	for (i = 0; i < ROCKER_PORT_MODE_MAX; i++) {
+		if (rocker->worlds[i] && rocker->worlds[i]->ops->init) {
+			dev_info(&pdev->dev,
+				 "Rocker switch init world %d\n", i);
+			rocker->worlds[i]->ops->init(rocker->worlds[i]);
+		}
+	}
 
 	dev_info(&pdev->dev, "Rocker switch with id %016llx\n", rocker->hw.id);
 
@@ -4927,7 +4930,7 @@ err_pci_enable_device:
 static void rocker_remove(struct pci_dev *pdev)
 {
 	struct rocker *rocker = pci_get_drvdata(pdev);
-  int i;
+	int i;
 
 	rocker_free_tbls(rocker);
 	rocker_write32(rocker, CONTROL, ROCKER_CONTROL_RESET);
@@ -4939,12 +4942,12 @@ static void rocker_remove(struct pci_dev *pdev)
 	iounmap(rocker->hw_addr);
 	pci_release_regions(rocker->pdev);
 	pci_disable_device(rocker->pdev);
-  for (i=0; i<ROCKER_PORT_MODE_MAX; i++) {
-    if (rocker->worlds[i]) {
-      rocker_world_free(rocker->worlds[i]);
-      rocker->worlds[i] = NULL;
-    }
-  }
+	for (i = 0; i < ROCKER_PORT_MODE_MAX; i++) {
+		if (rocker->worlds[i]) {
+			rocker_world_free(rocker->worlds[i]);
+			rocker->worlds[i] = NULL;
+		}
+	}
 	kfree(rocker);
 }
 
@@ -4976,16 +4979,16 @@ static int rocker_port_bridge_join(struct rocker_port *rocker_port,
 
 	/* Use bridge internal VLAN ID for untagged pkts */
 	err = ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
-                          ROCKER_PORT_WORLD(rocker_port),
-                          rocker_port, 
-                          ROCKER_OP_FLAG_REMOVE, 0);
+				ROCKER_PORT_WORLD(rocker_port),
+				rocker_port,
+				ROCKER_OP_FLAG_REMOVE, 0);
 	if (err)
 		return err;
 	rocker_port->internal_vlan_id =
 		rocker_port_internal_vlan_id_get(rocker_port,
 						 bridge->ifindex);
 	return ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
-              ROCKER_PORT_WORLD(rocker_port), rocker_port, 0, 0);
+			ROCKER_PORT_WORLD(rocker_port), rocker_port, 0, 0);
 }
 
 static int rocker_port_bridge_leave(struct rocker_port *rocker_port)
@@ -4999,15 +5002,15 @@ static int rocker_port_bridge_leave(struct rocker_port *rocker_port)
 
 	/* Use port internal VLAN ID for untagged pkts */
 	err = ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
-                                ROCKER_PORT_WORLD(rocker_port), rocker_port, 
-                                ROCKER_OP_FLAG_REMOVE, 0);
+				ROCKER_PORT_WORLD(rocker_port), rocker_port,
+				ROCKER_OP_FLAG_REMOVE, 0);
 	if (err)
 		return err;
 	rocker_port->internal_vlan_id =
 		rocker_port_internal_vlan_id_get(rocker_port,
 						 rocker_port->dev->ifindex);
 	err = ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
-              ROCKER_PORT_WORLD(rocker_port), rocker_port, 0,0);
+		ROCKER_PORT_WORLD(rocker_port), rocker_port, 0, 0);
 	if (err)
 		return err;
 

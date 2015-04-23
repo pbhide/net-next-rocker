@@ -147,10 +147,10 @@ enum {
 	ROCKER_TLV_CMD_TYPE_CLEAR_PORT_STATS,
 	ROCKER_TLV_CMD_TYPE_GET_PORT_STATS,
 
-  ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_ADD,
-  ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_DEL,
-  ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_MOD,
-  ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
+	ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_ADD,
+	ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_DEL,
+	ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_MOD,
+	ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
 
 	__ROCKER_TLV_CMD_TYPE_MAX,
 	ROCKER_TLV_CMD_TYPE_MAX = __ROCKER_TLV_CMD_TYPE_MAX - 1,
@@ -193,7 +193,7 @@ enum {
 enum rocker_port_mode {
 	ROCKER_PORT_MODE_OF_DPA = 0,
 	ROCKER_PORT_MODE_P4_L2L3,
-  ROCKER_PORT_MODE_MAX,
+	ROCKER_PORT_MODE_MAX,
 };
 
 enum {
@@ -406,14 +406,13 @@ enum rocker_of_dpa_overlay_type {
 
 /* cmd info nested TLVs for P4 msgs */
 enum {
-  ROCKER_TLV_P4_RMT_INFO_UNSPEC = 0,  /* don't use 0 for tlv type */
+	ROCKER_TLV_P4_RMT_INFO_UNSPEC = 0,  /* don't use 0 for tlv type */
 	ROCKER_TLV_P4_RMT_INFO_TABLE_ID,
 	ROCKER_TLV_P4_RMT_INFO_TABLE_ENTRY,    /* opaque table entry */
 
 	__ROCKER_TLV_P4_RMT_INFO_MAX,
 	ROCKER_TLV_P4_RMT_INFO_MAX = __ROCKER_TLV_P4_RMT_INFO_MAX - 1,
 };
-
 
 /* OF-DPA group ID encoding */
 #define ROCKER_GROUP_TYPE_SHIFT 28
@@ -481,7 +480,6 @@ enum {
 /* Rocker control bits */
 #define ROCKER_CONTROL_RESET		(1 << 0)
 
-
 #define ROCKER_OP_FLAG_REMOVE		BIT(0)
 #define ROCKER_OP_FLAG_NOWAIT		BIT(1)
 #define ROCKER_OP_FLAG_LEARNED		BIT(2)
@@ -496,6 +494,7 @@ struct rocker_dma_ring_info {
 	struct rocker_desc_info *desc_info;
 	unsigned int type;
 };
+
 enum {
 	ROCKER_CTRL_LINK_LOCAL_MCAST,
 	ROCKER_CTRL_LOCAL_ARP,
@@ -524,32 +523,34 @@ struct rocker_port {
 	struct napi_struct napi_rx;
 	struct rocker_dma_ring_info tx_ring;
 	struct rocker_dma_ring_info rx_ring;
-  enum rocker_port_mode port_mode;
+	enum rocker_port_mode port_mode;
 };
+
 /* Rocker worlds */
 struct rocker_world;
 typedef int (world_init)(struct rocker_world *w);
 typedef void (world_uninit)(struct rocker_world *w);
 typedef int (world_fdb_op)(struct rocker_world *w,
-                        struct rocker_port *rocker_port, int flags, 
-                        const u8 *addr, __be16 vlan_id);
+			   struct rocker_port *rocker_port, int flags,
+			   const u8 *addr, __be16 vlan_id);
 typedef int (world_port_vlan)(struct rocker_world *w,
-                        struct rocker_port *rocker_port, int flags, u16 vid);
+			      struct rocker_port *rocker_port, int flags,
+			      u16 vid);
 
 struct rocker_world_ops {
-  world_init      *init;
-  world_uninit    *uninit;
-  world_fdb_op    *fdb_op;
-  world_port_vlan *port_vlan_op;
+	world_init      *init;
+	world_uninit    *uninit;
+	world_fdb_op    *fdb_op;
+	world_port_vlan *port_vlan_op;
 };
 
 struct rocker;
 
 struct rocker_world {
-  int                     world_id;
-  struct rocker_world_ops *ops;
-  void                    *priv; /* world specific private data */
-  struct rocker           *rocker;
+	int                     world_id;
+	struct rocker_world_ops *ops;
+	void                    *priv; /* world specific private data */
+	struct rocker           *rocker;
 };
 
 #define ROCKER_PORT_WORLD(_rp) ((_rp)->rocker->worlds[(_rp)->port_mode])
@@ -580,8 +581,9 @@ struct rocker {
 	DECLARE_HASHTABLE(neigh_tbl, 16);
 	spinlock_t neigh_tbl_lock;
 	u32 neigh_tbl_next_index;
-  struct rocker_world *worlds[ROCKER_PORT_MODE_MAX];
+	struct rocker_world *worlds[ROCKER_PORT_MODE_MAX];
 };
+
 struct rocker_desc_info {
 	char *data; /* mapped */
 	size_t data_size;
@@ -595,18 +597,18 @@ typedef int (*rocker_cmd_cb_t)(struct rocker *rocker,
 			       struct rocker_desc_info *desc_info,
 			       void *priv);
 __be16 rocker_port_vid_to_vlan(struct rocker_port *rocker_port,
-				      u16 vid, bool *pop_vlan);
+			       u16 vid, bool *pop_vlan);
 
 u16 rocker_port_vlan_to_vid(struct rocker_port *rocker_port,
-				   __be16 vlan_id);
+			    __be16 vlan_id);
 
 int rocker_cmd_exec(struct rocker *rocker,
-			   struct rocker_port *rocker_port,
-			   rocker_cmd_cb_t prepare, void *prepare_priv,
-			   rocker_cmd_cb_t process, void *process_priv,
-			   bool nowait);
+		    struct rocker_port *rocker_port, rocker_cmd_cb_t prepare,
+		    void *prepare_priv, rocker_cmd_cb_t process,
+		    void *process_priv, bool nowait);
 
 int rocker_send_mac_learn_notification_to_bridge(struct rocker_world *w,
-            struct rocker_port *rocker_port,
-				    int flags, const u8 *addr, __be16 vlan_id);
+						 struct rocker_port *rp,
+						 int flags, const u8 *addr,
+						 __be16 vlan_id);
 #endif

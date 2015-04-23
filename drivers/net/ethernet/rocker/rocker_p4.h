@@ -1,7 +1,7 @@
 /*
- * drivers/net/ethernet/rocker/rocker_p4.h - 
+ * drivers/net/ethernet/rocker/rocker_p4.h -
  * Rocker switch device driver for P4
- * 
+ *
  * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -45,9 +45,10 @@
 #include "rocker.h"
 #include "rocker_tlv.h"
 
-int   rocker_p4_table_write_request(struct rocker_world *w, 
-                struct rocker_port *rocker_port, 
-                int table_id, int op, 
-                void *entry, int entry_size, bool nowait);
+int	rocker_p4_table_write_request(struct rocker_world *w,
+				      struct rocker_port *rocker_port,
+				      int table_id, int op,
+				      void *entry, int entry_size,
+				      bool nowait);
 
-#endif // _ROCKER_P4_H_
+#endif /* _ROCKER_P4_H_*/
