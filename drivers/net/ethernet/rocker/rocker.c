@@ -3290,6 +3290,9 @@ static int rocker_port_vlan(struct rocker_world *w,
 	int err;
 
 	internal_vlan_id = rocker_port_vid_to_vlan(rocker_port, vid, &untagged);
+	dev_info(&rocker_port->rocker->pdev->dev,
+		 "port_vlan: vid %d, int_vlan %d, port %d, flags 0x%x\n",
+		 vid, internal_vlan_id, rocker_port->pport, flags);
 
 	if (adding && test_and_set_bit(ntohs(internal_vlan_id),
 				       rocker_port->vlan_bitmap))
@@ -4049,15 +4052,19 @@ static int rocker_port_vlan_rx_add_vid(struct net_device *dev,
 	struct rocker_port *rocker_port = netdev_priv(dev);
 	int err;
 
-	if (rocker_port_is_p4_l2l3(rocker_port)) {
-		/* not supported on P4 yet */
-		return 0;
-	}
+	dev_info(&rocker_port->rocker->pdev->dev,
+		 "rx_add_vid:set vlan %d on port %d\n",
+		 vid, rocker_port->pport);
+
 	err = ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
 			ROCKER_PORT_WORLD(rocker_port), rocker_port, 0, vid);
 	if (err)
 		return err;
 
+	if (rocker_port_is_p4_l2l3(rocker_port)) {
+		/* not supported on P4 yet */
+		return 0;
+	}
 	return rocker_port_router_mac(rocker_port, 0, htons(vid));
 }
 
@@ -4066,6 +4073,10 @@ static int rocker_port_vlan_rx_kill_vid(struct net_device *dev,
 {
 	struct rocker_port *rocker_port = netdev_priv(dev);
 	int err;
+
+	dev_info(&rocker_port->rocker->pdev->dev,
+		 rocker_port->dev, "rx_kill_vid:set vlan %d on port %d\n",
+		 vid, rocker_port->pport);
 
 	err = rocker_port_router_mac(rocker_port, ROCKER_OP_FLAG_REMOVE,
 				     htons(vid));
@@ -4932,9 +4943,11 @@ static void rocker_remove(struct pci_dev *pdev)
 	struct rocker *rocker = pci_get_drvdata(pdev);
 	int i;
 
-	rocker_free_tbls(rocker);
-	rocker_write32(rocker, CONTROL, ROCKER_CONTROL_RESET);
+    printk("Rocker remove");
 	rocker_remove_ports(rocker);
+	rocker_free_tbls(rocker);
+	// rocker_write32(rocker, CONTROL, ROCKER_CONTROL_RESET);
+	// rocker_remove_ports(rocker);
 	free_irq(rocker_msix_vector(rocker, ROCKER_MSIX_VEC_EVENT), rocker);
 	free_irq(rocker_msix_vector(rocker, ROCKER_MSIX_VEC_CMD), rocker);
 	rocker_dma_rings_fini(rocker);
@@ -4972,6 +4985,8 @@ static int rocker_port_bridge_join(struct rocker_port *rocker_port,
 {
 	int err;
 
+	dev_info(&rocker_port->rocker->pdev->dev,
+		 "port %d join\n", rocker_port->pport);
 	rocker_port_internal_vlan_id_put(rocker_port,
 					 rocker_port->dev->ifindex);
 
@@ -5000,6 +5015,8 @@ static int rocker_port_bridge_leave(struct rocker_port *rocker_port)
 
 	rocker_port->bridge_dev = NULL;
 
+	dev_info(&rocker_port->rocker->pdev->dev,
+		 "port %d leave\n", rocker_port->pport);
 	/* Use port internal VLAN ID for untagged pkts */
 	err = ROCKER_PORT_WORLD_OPS(rocker_port)->port_vlan_op(
 				ROCKER_PORT_WORLD(rocker_port), rocker_port,
@@ -5132,6 +5149,7 @@ err_pci_register_driver:
 
 static void __exit rocker_module_exit(void)
 {
+    printk("Rocker Exit");
 	unregister_netevent_notifier(&rocker_netevent_nb);
 	unregister_netdevice_notifier(&rocker_netdevice_nb);
 	pci_unregister_driver(&rocker_pci_driver);

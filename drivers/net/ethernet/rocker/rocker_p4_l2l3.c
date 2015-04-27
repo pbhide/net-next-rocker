@@ -50,28 +50,33 @@ int
 rocker_p4_l2l3_init(struct rocker_world *w)
 {
 	/* set default actions for all tables in this world */
-	int action_id;
+	struct rocker_p4_l2l3_port_vlan_mapping_entry_s	entry;
+	struct rocker_p4_l2l3_dmac_entry_s		entry1;
+	struct rocker_p4_l2l3_smac_entry_s		entry2;
 
-	action_id =
+	memset(&entry, 0, sizeof(entry));
+	entry.action_id =
 	  rocker_p4_l2l3_port_vlan_mapping_set_default_action_port_vlan_miss();
 
-	/* XXX this works fine when there are no action parameters */
-	/* Also TLV-ize all the fields rather than passing data structures */
 	rocker_p4_table_write_request(w, NULL,
 				RMT_TABLE_port_vlan_mapping,
 				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
-				&action_id, sizeof(action_id), false);
+				&entry, sizeof(entry), false);
 
-	action_id = rocker_p4_l2l3_dmac_set_default_action_dmac_miss();
+	memset(&entry1, 0, sizeof(entry1));
+	entry1.action_id = rocker_p4_l2l3_dmac_set_default_action_dmac_miss();
 	rocker_p4_table_write_request(w, NULL,
 				RMT_TABLE_dmac,
 				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
-				&action_id, sizeof(action_id), false);
-	action_id = rocker_p4_l2l3_smac_set_default_action_smac_miss();
+				&entry1, sizeof(entry1), false);
+	printk("Add default action for dmac table %d\n", entry1.action_id);
+
+	memset(&entry2, 0, sizeof(entry2));
+	entry2.action_id = rocker_p4_l2l3_smac_set_default_action_smac_miss();
 	rocker_p4_table_write_request(w, NULL,
 				RMT_TABLE_smac,
 				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
-				&action_id, sizeof(action_id), false);
+				&entry2, sizeof(entry2), false);
 	return 0;
 }
 
@@ -92,6 +97,9 @@ int rocker_p4_l2l3_port_vlan(struct rocker_world *w,
 	rocker_p4_entry_hdl_t entry_hdl;
 
 	__be16 vlan = rocker_port_vid_to_vlan(rocker_port, vid, &untagged);
+	dev_info(&rocker_port->rocker->pdev->dev,
+		 "l2l3_port_vlan: vid %d, int_vlan %d, port %d, flags 0x%x\n",
+		 (int)vid, (int)vlan, rocker_port->pport, flags);
 
 	if (flags & ROCKER_OP_FLAG_REMOVE) {
 		/* XXX - */
