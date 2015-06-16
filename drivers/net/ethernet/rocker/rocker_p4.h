@@ -1,6 +1,6 @@
 /*
- * drivers/net/ethernet/rocker/rocker_p4.h -
- * Rocker switch device driver for P4
+ * drivers/net/ethernet/rocker/rocker_p4_l2l3.h -
+ * Rocker switch device driver for P4 l2l3 device
  *
  * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
@@ -11,44 +11,14 @@
  */
 #ifndef _ROCKER_P4_H_
 #define _ROCKER_P4_H_
+/* P4 world functions */
+int   rocker_p4_init(struct rocker_world *w);
+void  rocker_p4_uninit(struct rocker_world *w);
+int   rocker_p4_fdb_learn(struct rocker_world *w,
+			  struct rocker_port *rocker_port,
+			  int flags, const u8 *addr, __be16 vlan_id);
+int   rocker_p4_port_vlan(struct rocker_world *w,
+			  struct rocker_port *rocker_port, int flags,
+			  u16 vid);
 
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/pci.h>
-#include <linux/interrupt.h>
-#include <linux/sched.h>
-#include <linux/wait.h>
-#include <linux/spinlock.h>
-#include <linux/hashtable.h>
-#include <linux/crc32.h>
-#include <linux/sort.h>
-#include <linux/random.h>
-#include <linux/netdevice.h>
-#include <linux/inetdevice.h>
-#include <linux/skbuff.h>
-#include <linux/socket.h>
-#include <linux/etherdevice.h>
-#include <linux/ethtool.h>
-#include <linux/if_ether.h>
-#include <linux/if_vlan.h>
-#include <linux/if_bridge.h>
-#include <linux/bitops.h>
-#include <linux/ctype.h>
-#include <net/switchdev.h>
-#include <net/rtnetlink.h>
-#include <net/ip_fib.h>
-#include <net/netevent.h>
-#include <net/arp.h>
-#include <asm-generic/io-64-nonatomic-lo-hi.h>
-#include <generated/utsrelease.h>
-
-#include "rocker.h"
-#include "rocker_tlv.h"
-
-int	rocker_p4_table_write_request(struct rocker_world *w,
-				      struct rocker_port *rocker_port,
-				      int table_id, int op,
-				      void *entry, int entry_size,
-				      bool nowait);
-
-#endif /* _ROCKER_P4_H_*/
+#endif /*_ROCKER_P4_H_ */

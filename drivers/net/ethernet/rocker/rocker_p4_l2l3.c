@@ -41,7 +41,7 @@
 #include <generated/utsrelease.h>
 #include "rocker.h"
 #include "rocker_tlv.h"
-#include "rocker_p4.h"
+#include "rocker_p4_rmt.h"
 #include "rocker_p4_l2l3_enums.h"
 #include "rocker_p4_l2l3_tables.h"
 #include "rocker_p4_l2l3_pd.h"
@@ -59,24 +59,24 @@ rocker_p4_l2l3_init(struct rocker_world *w)
 	  rocker_p4_l2l3_port_vlan_mapping_set_default_action_port_vlan_miss();
 
 	rocker_p4_table_write_request(w, NULL,
-				RMT_TABLE_port_vlan_mapping,
-				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
-				&entry, sizeof(entry), false);
+				      RMT_TABLE_port_vlan_mapping,
+				      ROCKER_TLV_CMD_P4_TABLE_DEFAULT_ACTION,
+				      &entry, sizeof(entry), false);
 
 	memset(&entry1, 0, sizeof(entry1));
 	entry1.action_id = rocker_p4_l2l3_dmac_set_default_action_dmac_miss();
 	rocker_p4_table_write_request(w, NULL,
-				RMT_TABLE_dmac,
-				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
-				&entry1, sizeof(entry1), false);
+				      RMT_TABLE_dmac,
+				      ROCKER_TLV_CMD_P4_TABLE_DEFAULT_ACTION,
+				      &entry1, sizeof(entry1), false);
 	printk("Add default action for dmac table %d\n", entry1.action_id);
 
 	memset(&entry2, 0, sizeof(entry2));
 	entry2.action_id = rocker_p4_l2l3_smac_set_default_action_smac_miss();
 	rocker_p4_table_write_request(w, NULL,
-				RMT_TABLE_smac,
-				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
-				&entry2, sizeof(entry2), false);
+				      RMT_TABLE_smac,
+				      ROCKER_TLV_CMD_P4_TABLE_DEFAULT_ACTION,
+				      &entry2, sizeof(entry2), false);
 	return 0;
 }
 
@@ -115,9 +115,9 @@ int rocker_p4_l2l3_port_vlan(struct rocker_world *w,
 			 (int)action_spec.action_fid);
 
 		rocker_p4_table_write_request(w, rocker_port,
-				RMT_TABLE_port_vlan_mapping,
-				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_ADD,
-				&entry, sizeof(entry), nowait);
+					      RMT_TABLE_port_vlan_mapping,
+					      ROCKER_TLV_CMD_P4_TABLE_ADD,
+					      &entry, sizeof(entry), nowait);
 	}
 	return 0;
 }
@@ -154,9 +154,9 @@ int rocker_p4_l2l3_fdb_learn(struct rocker_world *w,
 						&entry, &entry_hdl);
 		/* XXX need to save the entry_handle for future ops */
 		rocker_p4_table_write_request(w, rocker_port,
-				RMT_TABLE_dmac,
-				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_ADD,
-				&entry, sizeof(entry), nowait);
+					      RMT_TABLE_dmac,
+					      ROCKER_TLV_CMD_P4_TABLE_ADD,
+					      &entry, sizeof(entry), nowait);
 		}
 		{
 		/* smac */
@@ -171,9 +171,9 @@ int rocker_p4_l2l3_fdb_learn(struct rocker_world *w,
 						&entry, &entry_hdl);
 		/* XXX need to save the entry_handle for future ops */
 		rocker_p4_table_write_request(w, rocker_port,
-				RMT_TABLE_smac,
-				ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_ADD,
-				&entry, sizeof(entry), nowait);
+					      RMT_TABLE_smac,
+					      ROCKER_TLV_CMD_P4_TABLE_ADD,
+					      &entry, sizeof(entry), nowait);
 		}
 		rocker_send_mac_learn_notification_to_bridge(w, rocker_port,
 					flags, addr, vlan_id);

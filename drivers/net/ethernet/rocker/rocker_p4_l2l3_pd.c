@@ -19,7 +19,7 @@ limitations under the License.
  *
  */
 
-#include "rocker_p4.h"
+#include "rocker_p4_rmt.h"
 #include "rocker_p4_l2l3_enums.h"
 #include "rocker_p4_l2l3_tables.h"
 #include "rocker_p4_l2l3_pd.h"

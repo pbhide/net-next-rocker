@@ -42,8 +42,9 @@
 
 #include "rocker.h"
 #include "rocker_tlv.h"
-#include "rocker_p4.h"
+#include "rocker_p4_rmt.h"
 #include "rocker_p4_l2l3.h"
+#include "rocker_p4.h"
 
 static const char rocker_driver_name[] = "rocker";
 
@@ -51,7 +52,8 @@ static const char rocker_driver_name[] = "rocker";
 static int port_mode_num = 4;
 static int rocker_port_mode[ROCKER_FP_PORTS_MAX] = {
 	ROCKER_PORT_MODE_OF_DPA, ROCKER_PORT_MODE_OF_DPA,
-	ROCKER_PORT_MODE_P4_L2L3, ROCKER_PORT_MODE_P4_L2L3,
+	// ROCKER_PORT_MODE_P4_L2L3, ROCKER_PORT_MODE_P4_L2L3,
+	ROCKER_PORT_MODE_ROCKER_P4, ROCKER_PORT_MODE_ROCKER_P4,
 	0,
 };
 
@@ -203,11 +205,32 @@ static struct rocker_world_ops of_dpa_ops = {
 	.port_vlan_op = rocker_port_vlan,
 };
 
-static struct rocker_world_ops p4_rmt_ops = {
+static struct rocker_world_ops p4_l2l3_ops = {
+#if 0
 	.init = rocker_p4_l2l3_init,
 	.uninit = rocker_p4_l2l3_uninit,
 	.fdb_op = rocker_p4_l2l3_fdb_learn,
 	.port_vlan_op = rocker_p4_l2l3_port_vlan,
+#else
+	.init = NULL,
+	.uninit = NULL,
+	.fdb_op = NULL,
+	.port_vlan_op = NULL,
+#endif
+};
+
+static struct rocker_world_ops rocker_p4_ops = {
+#if 1
+	.init = rocker_p4_init,
+	.uninit = rocker_p4_uninit,
+	.fdb_op = rocker_p4_fdb_learn,
+	.port_vlan_op = rocker_p4_port_vlan,
+#else
+	.init = NULL,
+	.uninit = NULL,
+	.fdb_op = NULL,
+	.port_vlan_op = NULL,
+#endif
 };
 
 static struct rocker_world *
@@ -302,9 +325,10 @@ bool rocker_port_is_bridged(struct rocker_port *rocker_port)
 	return !!rocker_port->bridge_dev;
 }
 
-static bool rocker_port_is_p4_l2l3(struct rocker_port *rocker_port)
+static bool rocker_port_is_p4(struct rocker_port *rocker_port)
 {
-	return rocker_port->port_mode == ROCKER_PORT_MODE_P4_L2L3;
+	return ((rocker_port->port_mode == ROCKER_PORT_MODE_P4_L2L3) ||
+		(rocker_port->port_mode == ROCKER_PORT_MODE_ROCKER_P4));
 }
 
 struct rocker_wait {
@@ -2715,6 +2739,9 @@ static int rocker_group_l2_interface(struct rocker_port *rocker_port,
 	entry->group_id = ROCKER_GROUP_L2_INTERFACE(vlan_id, out_pport);
 	entry->l2_interface.pop_vlan = pop_vlan;
 
+	if (rocker_port_is_p4(rocker_port)) {
+        return 0;
+    }
 	return rocker_group_tbl_do(rocker_port, flags, entry);
 }
 
@@ -3678,7 +3705,7 @@ static int rocker_port_fwd_enable(struct rocker_port *rocker_port)
 		return 0;
 	}
 
-	if (rocker_port_is_p4_l2l3(rocker_port)) {
+	if (rocker_port_is_p4(rocker_port)) {
 		/* STP not supported on P4 yet */
 		return 0;
 	}
@@ -3692,10 +3719,12 @@ static int rocker_port_fwd_disable(struct rocker_port *rocker_port)
 	if (rocker_port_is_bridged(rocker_port))
 		/* bridge STP will disable port */
 		return 0;
-	if (rocker_port_is_p4_l2l3(rocker_port)) {
+#if 0 // need FDB flush
+	if (rocker_port_is_p4(rocker_port)) {
 		/* STP not supported on P4 yet */
 		return 0;
 	}
+#endif
 
 	/* port is not bridged, so simulate going to DISABLED state */
 	return rocker_port_stp_update(rocker_port, BR_STATE_DISABLED);
@@ -4061,7 +4090,7 @@ static int rocker_port_vlan_rx_add_vid(struct net_device *dev,
 	if (err)
 		return err;
 
-	if (rocker_port_is_p4_l2l3(rocker_port)) {
+	if (rocker_port_is_p4(rocker_port)) {
 		/* not supported on P4 yet */
 		return 0;
 	}
@@ -4075,7 +4104,7 @@ static int rocker_port_vlan_rx_kill_vid(struct net_device *dev,
 	int err;
 
 	dev_info(&rocker_port->rocker->pdev->dev,
-		 rocker_port->dev, "rx_kill_vid:set vlan %d on port %d\n",
+		 "rx_kill_vid:set vlan %d on port %d\n",
 		 vid, rocker_port->pport);
 
 	err = rocker_port_router_mac(rocker_port, ROCKER_OP_FLAG_REMOVE,
@@ -4901,7 +4930,12 @@ static int rocker_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 					   rocker);
 	rocker->worlds[ROCKER_PORT_MODE_P4_L2L3] =
 			rocker_world_alloc(ROCKER_PORT_MODE_P4_L2L3,
-					   &p4_rmt_ops, rocker);
+					   &p4_l2l3_ops, rocker);
+
+	rocker->worlds[ROCKER_PORT_MODE_ROCKER_P4] =
+			rocker_world_alloc(ROCKER_PORT_MODE_ROCKER_P4,
+					   &rocker_p4_ops, rocker);
+
 	for (i = 0; i < ROCKER_PORT_MODE_MAX; i++) {
 		if (rocker->worlds[i] && rocker->worlds[i]->ops->init) {
 			dev_info(&pdev->dev,
