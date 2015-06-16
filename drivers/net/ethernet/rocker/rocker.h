@@ -2,6 +2,7 @@
  * drivers/net/ethernet/rocker/rocker.h - Rocker switch device driver
  * Copyright (c) 2014 Jiri Pirko <jiri@resnulli.us>
  * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
+ * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,6 +124,7 @@ struct rocker_tlv {
 enum {
 	ROCKER_TLV_CMD_UNSPEC,
 	ROCKER_TLV_CMD_TYPE,	/* u16 */
+	ROCKER_TLV_CMD_WORLD,	/* u32 */
 	ROCKER_TLV_CMD_INFO,	/* nest */
 
 	__ROCKER_TLV_CMD_MAX,
@@ -144,6 +146,11 @@ enum {
 
 	ROCKER_TLV_CMD_TYPE_CLEAR_PORT_STATS,
 	ROCKER_TLV_CMD_TYPE_GET_PORT_STATS,
+
+	ROCKER_TLV_CMD_P4_TABLE_ADD,
+	ROCKER_TLV_CMD_P4_TABLE_DEL,
+	ROCKER_TLV_CMD_P4_TABLE_MOD,
+	ROCKER_TLV_CMD_P4_TABLE_DEFAULT_ACTION,
 
 	__ROCKER_TLV_CMD_TYPE_MAX,
 	ROCKER_TLV_CMD_TYPE_MAX = __ROCKER_TLV_CMD_TYPE_MAX - 1,
@@ -184,7 +191,10 @@ enum {
 };
 
 enum rocker_port_mode {
-	ROCKER_PORT_MODE_OF_DPA,
+	ROCKER_PORT_MODE_OF_DPA = 0,
+	ROCKER_PORT_MODE_P4_L2L3,
+	ROCKER_PORT_MODE_ROCKER_P4,
+	ROCKER_PORT_MODE_MAX,
 };
 
 enum {
@@ -353,7 +363,6 @@ enum {
 };
 
 /* OF-DPA table IDs */
-
 enum rocker_of_dpa_table_id {
 	ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT = 0,
 	ROCKER_OF_DPA_TABLE_ID_VLAN = 10,
@@ -394,6 +403,16 @@ enum rocker_of_dpa_overlay_type {
 	ROCKER_OF_DPA_OVERLAY_TYPE_FLOOD_MCAST,
 	ROCKER_OF_DPA_OVERLAY_TYPE_MCAST_UCAST,
 	ROCKER_OF_DPA_OVERLAY_TYPE_MCAST_MCAST,
+};
+
+/* cmd info nested TLVs for P4 msgs */
+enum {
+	ROCKER_TLV_P4_RMT_INFO_UNSPEC = 0,  /* don't use 0 for tlv type */
+	ROCKER_TLV_P4_RMT_INFO_TABLE_ID,
+	ROCKER_TLV_P4_RMT_INFO_TABLE_ENTRY,    /* opaque table entry */
+
+	__ROCKER_TLV_P4_RMT_INFO_MAX,
+	ROCKER_TLV_P4_RMT_INFO_MAX = __ROCKER_TLV_P4_RMT_INFO_MAX - 1,
 };
 
 /* OF-DPA group ID encoding */
@@ -462,4 +481,135 @@ enum rocker_of_dpa_overlay_type {
 /* Rocker control bits */
 #define ROCKER_CONTROL_RESET		(1 << 0)
 
+#define ROCKER_OP_FLAG_REMOVE		BIT(0)
+#define ROCKER_OP_FLAG_NOWAIT		BIT(1)
+#define ROCKER_OP_FLAG_LEARNED		BIT(2)
+#define ROCKER_OP_FLAG_REFRESH		BIT(3)
+
+struct rocker_dma_ring_info {
+	size_t size;
+	u32 head;
+	u32 tail;
+	struct rocker_desc *desc; /* mapped */
+	dma_addr_t mapaddr;
+	struct rocker_desc_info *desc_info;
+	unsigned int type;
+};
+
+enum {
+	ROCKER_CTRL_LINK_LOCAL_MCAST,
+	ROCKER_CTRL_LOCAL_ARP,
+	ROCKER_CTRL_IPV4_MCAST,
+	ROCKER_CTRL_IPV6_MCAST,
+	ROCKER_CTRL_DFLT_BRIDGING,
+	ROCKER_CTRL_MAX,
+};
+
+#define ROCKER_INTERNAL_VLAN_ID_BASE	0x0f00
+#define ROCKER_N_INTERNAL_VLANS		255
+#define ROCKER_VLAN_BITMAP_LEN		BITS_TO_LONGS(VLAN_N_VID)
+#define ROCKER_INTERNAL_VLAN_BITMAP_LEN	BITS_TO_LONGS(ROCKER_N_INTERNAL_VLANS)
+struct rocker_port {
+	struct net_device *dev;
+	struct net_device *bridge_dev;
+	struct rocker *rocker;
+	unsigned int port_number;
+	u32 pport;
+	__be16 internal_vlan_id;
+	int stp_state;
+	u32 brport_flags;
+	bool ctrls[ROCKER_CTRL_MAX];
+	unsigned long vlan_bitmap[ROCKER_VLAN_BITMAP_LEN];
+	struct napi_struct napi_tx;
+	struct napi_struct napi_rx;
+	struct rocker_dma_ring_info tx_ring;
+	struct rocker_dma_ring_info rx_ring;
+	enum rocker_port_mode port_mode;
+};
+
+/* Rocker worlds */
+struct rocker_world;
+typedef int (world_init)(struct rocker_world *w);
+typedef void (world_uninit)(struct rocker_world *w);
+typedef int (world_fdb_op)(struct rocker_world *w,
+			   struct rocker_port *rocker_port, int flags,
+			   const u8 *addr, __be16 vlan_id);
+typedef int (world_port_vlan)(struct rocker_world *w,
+			      struct rocker_port *rocker_port, int flags,
+			      u16 vid);
+
+struct rocker_world_ops {
+	world_init      *init;
+	world_uninit    *uninit;
+	world_fdb_op    *fdb_op;
+	world_port_vlan *port_vlan_op;
+};
+
+struct rocker;
+
+struct rocker_world {
+	int                     world_id;
+	struct rocker_world_ops *ops;
+	void                    *priv; /* world specific private data */
+	struct rocker           *rocker;
+};
+
+#define ROCKER_PORT_WORLD(_rp) ((_rp)->rocker->worlds[(_rp)->port_mode])
+#define ROCKER_PORT_WORLD_OPS(_rp) (ROCKER_PORT_WORLD(_rp)->ops)
+
+struct rocker {
+	struct pci_dev *pdev;
+	u8 __iomem *hw_addr;
+	struct msix_entry *msix_entries;
+	unsigned int port_count;
+	struct rocker_port **ports;
+	struct {
+		u64 id;
+	} hw;
+	spinlock_t cmd_ring_lock;
+	struct rocker_dma_ring_info cmd_ring;
+	struct rocker_dma_ring_info event_ring;
+	DECLARE_HASHTABLE(flow_tbl, 16);
+	spinlock_t flow_tbl_lock;
+	u64 flow_tbl_next_cookie;
+	DECLARE_HASHTABLE(group_tbl, 16);
+	spinlock_t group_tbl_lock;
+	DECLARE_HASHTABLE(fdb_tbl, 16);
+	spinlock_t fdb_tbl_lock;
+	unsigned long internal_vlan_bitmap[ROCKER_INTERNAL_VLAN_BITMAP_LEN];
+	DECLARE_HASHTABLE(internal_vlan_tbl, 8);
+	spinlock_t internal_vlan_tbl_lock;
+	DECLARE_HASHTABLE(neigh_tbl, 16);
+	spinlock_t neigh_tbl_lock;
+	u32 neigh_tbl_next_index;
+	struct rocker_world *worlds[ROCKER_PORT_MODE_MAX];
+};
+
+struct rocker_desc_info {
+	char *data; /* mapped */
+	size_t data_size;
+	size_t tlv_size;
+	struct rocker_desc *desc;
+	DEFINE_DMA_UNMAP_ADDR(mapaddr);
+};
+
+typedef int (*rocker_cmd_cb_t)(struct rocker *rocker,
+			       struct rocker_port *rocker_port,
+			       struct rocker_desc_info *desc_info,
+			       void *priv);
+__be16 rocker_port_vid_to_vlan(struct rocker_port *rocker_port,
+			       u16 vid, bool *pop_vlan);
+
+u16 rocker_port_vlan_to_vid(struct rocker_port *rocker_port,
+			    __be16 vlan_id);
+
+int rocker_cmd_exec(struct rocker *rocker,
+		    struct rocker_port *rocker_port, rocker_cmd_cb_t prepare,
+		    void *prepare_priv, rocker_cmd_cb_t process,
+		    void *process_priv, bool nowait);
+
+int rocker_send_mac_learn_notification_to_bridge(struct rocker_world *w,
+						 struct rocker_port *rp,
+						 int flags, const u8 *addr,
+						 __be16 vlan_id);
 #endif
